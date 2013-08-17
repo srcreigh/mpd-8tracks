@@ -38,6 +38,9 @@ if (len(sys.argv) != 2):
 else:
    mix_url = sys.argv[1]
 
+# we're using api version 2
+api_version = "2"
+
 # Check that MPD/MPC is working
 if (os.system('mpc 1>/dev/null 2>/dev/null') != 0):
    print "ERR: MPD isn't running; please start mpd and run again"
@@ -48,7 +51,7 @@ os.system("mpc clear 1>/dev/null")
 os.system("mpc consume on 1>/dev/null")
 
 # Get the mix information, extract the mix id
-query_url = "%s.xml?api_key=%s" % (mix_url, api_key)
+query_url = "%s.xml?api_version=%s&api_key=%s" % (mix_url, api_version, api_key)
 mix_info = ET.fromstring(urllib2.urlopen(query_url).read())
 
 for info in mix_info[0]:
@@ -60,13 +63,13 @@ for info in mix_info[0]:
 os.system("mkdir \"playlists/%s\" 1>/dev/null 2>/dev/null" % mix_name)
 
 # Get the play token
-query_url = "http://8tracks.com/sets/new.xml?api_key=%s" % api_key
+query_url = "http://8tracks.com/sets/new.xml?api_version=%s&api_key=%s" % (api_version, api_key)
 play_token_info = ET.fromstring(urllib2.urlopen(query_url).read())
 for n in play_token_info:
    if n.tag == 'play-token': play_token = n.text
 
 # Start the playlist
-query_url = "http://8tracks.com/sets/460486803/play.xml?mix_id=" + mix_id
+query_url = "http://8tracks.com/sets/460486803/play.xml?api_version=%smix_id=" % api_version + mix_id
 query_url += "&api_key=" + api_key
 query_url += "&play_token=" + play_token
 
