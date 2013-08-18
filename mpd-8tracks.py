@@ -27,6 +27,19 @@ import urllib2
 import os
 import json
 
+
+# Check that MPD/MPC is working
+if (os.system('mpc 1>/dev/null 2>/dev/null') != 0):
+   print >> sys.stderr, "ERR: MPD isn't running; please start mpd and run again"
+   sys.exit(1)
+
+# Check for correct usage (i.e. that a url has been given)
+if (len(sys.argv) != 2):
+   print >> sys.stderr, "ERR: Usage: python mpd8tracks [url to an 8tracks mix]"
+   sys.exit(2)
+else:
+   mix_url = sys.argv[1]
+
 # Open the API developer key
 api_key = raw_input("Enter API Key: ")
 print
@@ -39,21 +52,6 @@ def api_call(path, **kwargs):
    for key in kwargs:
       query = "%s&%s=%s" % (query, key, kwargs[key])
    return json.loads(urllib2.urlopen(query).read())
-
-
-# Check for correct usage (i.e. that a url has been given)
-if (len(sys.argv) != 2):
-   print >> sys.stderr, "ERR: Usage: python mpd8tracks [url to an 8tracks mix]"
-   sys.exit(2)
-else:
-   mix_url = sys.argv[1]
-
-
-
-# Check that MPD/MPC is working
-if (os.system('mpc 1>/dev/null 2>/dev/null') != 0):
-   print >> sys.stderr, "ERR: MPD isn't running; please start mpd and run again"
-   sys.exit(1)
 
 # Set up mpd
 os.system("mpc clear 1>/dev/null")
