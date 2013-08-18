@@ -28,7 +28,7 @@ import os
 import json
 
 # Open the API developer key
-api_key = open("8tracksdevkey.txt", 'r').readline()[:-1]
+api_key = raw_input("Enter API Key: ")
 
 # we're using api version 2
 api_version = "2"
