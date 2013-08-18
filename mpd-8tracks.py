@@ -31,14 +31,15 @@ def normalize(s):
 
 def fix_track_url(url):
    if (url[:5] == 'https'):
-      return 'http%s' % url[5:]
+      return 'http' + url[5:]
+   return url
 
 # Check that MPD/MPC is working
 if (os.system('mpc 1>/dev/null 2>/dev/null') != 0):
    print >> sys.stderr, "ERR: MPD isn't running; please start mpd and run again"
    sys.exit(1)
 
-# Check and process input url(s)
+# Check and process input options, url(s)
 mix_urls = []
 if (len(sys.argv) == 1):
    print >> sys.stderr, "ERR: Usage: python mpd8tracks [url to an 8tracks mix]..."
@@ -89,7 +90,7 @@ for mix_url in mix_urls:
 
       track_id = song_info['set']['track']['id']
       name = normalize(song_info['set']['track']['name'])
-      artist = normalize(song_info['set']['track']['name'])
+      artist = normalize(song_info['set']['track']['performer'])
       track_url = song_info['set']['track']['url']
 
       # Fix the track URL (https://api.soundcloud/foo links don't work and need
