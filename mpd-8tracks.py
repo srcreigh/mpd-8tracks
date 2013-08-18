@@ -4,7 +4,7 @@
 # Copyright: Freely distributable
 #
 # Usage: 
-# python mpd8tracks [url to an 8tracks mix]
+# python mpd8tracks [url to an 8tracks mix]...
 #
 # Dependencies:
 # - bash shell
