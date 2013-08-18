@@ -80,6 +80,9 @@ for mix_url in mix_urls:
 
    # Start the playlist
    song_info = api_call("sets/1/play", mix_id=mix_id, play_token=play_token)
+   
+   # WIll store information to download stuff after 
+   infos = []
 
    # Song playing loop
    while True:
@@ -89,13 +92,16 @@ for mix_url in mix_urls:
          break
 
       track_id = song_info['set']['track']['id']
-      name = normalize(song_info['set']['track']['name'])
       artist = normalize(song_info['set']['track']['performer'])
+      name = normalize(song_info['set']['track']['name'])
       track_url = song_info['set']['track']['url']
 
       # Fix the track URL (https://api.soundcloud/foo links don't work and need
       # to be converted to http://api.soundcloud/foo)
       track_url = fix_track_url(track_url)
+
+      # Save in the list for possible downloading
+      infos.append((track_url, artist, name))
 
       print "Playing: %s - \"%s\"" % (artist, name)
 
@@ -105,14 +111,26 @@ for mix_url in mix_urls:
       # Queue the song via mpc
       os.system("mpc add \"%s\" 1>/dev/null" % track_url)
       os.system("mpc play 1>/dev/null")
-      f = urllib2.urlopen(track_url)
-      with open("playlists/%s/%s - %s.m4a" % (mix_name, artist, name), "w+") as code:
-        code.write(f.read())
-
-      # Wait until the song finishes playing to do the loop again
-      # (note: in reality, this just waits for *something* to happen to the
-      #  playlist. this could be neater)
-      os.system("mpc current --wait 1>/dev/null")
 
       # Load the next song
       song_info = api_call("sets/1/next", play_token=play_token, mix_id=mix_id)
+
+   # Asks if want to download songs
+   while True:
+      try:
+         ans = raw_input("Download this playlist? [yn]\n> ")
+      except EOFError:
+         continue
+
+      if (ans[0] == 'y'):
+         for track_url, artist, name in infos:
+            # Download the song
+            print "Downloading: %s - \"%s\"" % (artist, name)
+            f = urllib2.urlopen(track_url)
+            with open("playlists/%s/%s - %s" % (mix_name, artist, name),
+                      "w+") as song:
+               song.write(f.read())
+         break
+
+      elif (ans[0] == 'n'):
+         break
