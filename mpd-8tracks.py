@@ -70,7 +70,7 @@ for mix_url in mix_urls:
    mix_id = mix_info['mix']['id']
    mix_name = mix_info['mix']['name'].encode('ascii', 'ignore')
 
-   os.system("mkdir \"playlists/%s\" 1>/dev/null 2>/dev/null" % mix_name)
+   os.system("mkdir -p \"playlists/%s\" 1>/dev/null 2>/dev/null" % mix_name)
 
 
    # Start the playlist
