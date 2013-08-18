@@ -103,7 +103,7 @@ for mix_url in mix_urls:
       # Save in the list for possible downloading
       infos.append((track_url, artist, name))
 
-      print "Playing: %s - \"%s\"" % (artist, name)
+      print "Enqueuing: %s - \"%s\"" % (artist, name)
 
       # Notify 8tracks that the song is being played
       api_call("sets/1/report", play_token=play_token, mix_id=mix_id, track_id=track_id)
