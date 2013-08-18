@@ -72,6 +72,7 @@ song_info = ET.fromstring(urllib2.urlopen(query_url).read())
 
 # Song playing loop
 last_song = False
+infos = []
 while not last_song:
 
    # Load the next song
@@ -96,7 +97,7 @@ while not last_song:
             elif j.tag == 'url':       
                track_url = j.text
 
-   print "Enqueuing: %s - \"%s\"" % (artist, name)
+   print "Enqueuing %s - \"%s\"" % (artist, name)
 
    # Notify 8tracks that the song is being played
    query_url = "http://8tracks.com/sets/%s/report.xml" % play_token
@@ -106,18 +107,33 @@ while not last_song:
    # note: do not need to save any information, just need to call the url
    urllib2.urlopen(query_url) 
 
+   # Fix the url if necessary (https://api.soundcloud.com/foobarabc123 ones
+   # don't work)
+   if (track_url[:5] == "https"):
+      track_url = "http" + track_url[:5]
+
+   print "track url: %s" % track_url
+   
    # Queue the song via mpc
    os.system("mpc add \"%s\" 1>/dev/null" % track_url)
    os.system("mpc play 1>/dev/null")
-   f = urllib2.urlopen(track_url)
-#  with open("/home/shane/Music/8tracks/%s/%s - %s.m4a" \
-#            % (mix_name, artist, name), "w+") as code:
-#     code.write(f.read())
 
-   print track_url
+   infos.append((track_url, artist, name))
    
-   # Wait until the song finishes playing to do the loop again
-   # (note: in reality, this just waits for *something* to happen to the
-   #  playlist. this could be neater)
-   # os.system("mpc current --wait 1>/dev/null")
+while True:
+   foo = raw_input("Save songs for later? [yn]\n > ")
+   if (foo == 'y'):
+      os.system("mkdir music 2>/dev/null")
+      os.system("mkdir music/%s 2>/dev/null" % mix_name)
 
+      for url, artist, name in infos:
+         
+         f = urllib2.urlopen(url)
+         print "Downloading " + artist + " - \"%s\"" % name
+         with open("music/%s/%s - %s.m4a" \
+                   % (mix_name, artist, name), "w+") as music:
+            music.write(f.read())
+
+      break
+   elif (foo == 'n'): 
+      break
