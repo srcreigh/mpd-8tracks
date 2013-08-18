@@ -29,6 +29,7 @@ import json
 
 # Open the API developer key
 api_key = raw_input("Enter API Key: ")
+print
 
 # we're using api version 2
 api_version = "2"
