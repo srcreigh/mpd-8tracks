@@ -4,7 +4,7 @@
 # Copyright: Freely distributable
 #
 # Usage: 
-# python mpd8tracks [url to an 8tracks mix]
+# python mpd8tracks [url to an 8tracks mix]...
 #
 # Dependencies:
 # - bash shell
@@ -25,116 +25,87 @@
 import sys
 import urllib2
 import os
-import xml.etree.ElementTree as ET
-import xml.dom
+import json
 
 def normalize(s):
    t = s.encode('ascii', 'ignore')
    return t.translate(None, "'/")
 
-# Open the API developer key
-api_key = open("8tracksdevkey.txt", 'r').readline()[:-1]
-
-# Check for correct usage (i.e. that a url has been given)
-if (len(sys.argv) != 2):
-   print "ERR: Usage: python mpd8tracks [url to an 8tracks mix]"
-   sys.exit(2)
-else:
-   mix_url = sys.argv[1]
-
 # Check that MPD/MPC is working
 if (os.system('mpc 1>/dev/null 2>/dev/null') != 0):
-   print "ERR: MPD isn't running; please start mpd and run again"
+   print >> sys.stderr, "ERR: MPD isn't running; please start mpd and run again"
    sys.exit(1)
+
+# Check and process input url(s)
+mix_urls = []
+if (len(sys.argv) == 1):
+   print >> sys.stderr, "ERR: Usage: python mpd8tracks [url to an 8tracks mix]..."
+   sys.exit(2)
+for url in sys.argv[1:]:
+   i = url.find("8tracks.com")
+   if i != -1:
+      mix_urls.append(url[i+11:])
+
+# Open the API developer key
+api_key = raw_input("Enter API Key: ")
+print
+
+# we're using api version 2
+api_version = "2"
+
+def api_call(path, **kwargs):
+   query = "https://8tracks.com/%s.jsonp?api_version=%s&api_key=%s" % (path, api_version, api_key)
+   for key in kwargs:
+      query = "%s&%s=%s" % (query, key, kwargs[key])
+   return json.loads(urllib2.urlopen(query).read())
 
 # Set up mpd
 os.system("mpc clear 1>/dev/null")
 os.system("mpc consume on 1>/dev/null")
 
-# Get the mix information, extract the mix id
-query_url = "%s.xml?api_key=%s" % (mix_url, api_key)
-mix_info = ET.fromstring(urllib2.urlopen(query_url).read())
-
-for info in mix_info[0]:
-   if info.tag == 'id':    mix_id = info.text
-   if info.tag == 'name':  mix_name = normalize(info.text)
-
-os.system("mkdir \"/home/shane/Music/8tracks/%s\" \
-          1>/dev/null 2>/dev/null" % mix_name)
-
 # Get the play token
-query_url = "http://8tracks.com/sets/new.xml?api_key=%s" % api_key
-play_token_info = ET.fromstring(urllib2.urlopen(query_url).read())
-for n in play_token_info:
-   if n.tag == 'play-token': play_token = n.text
+play_token_info = api_call("sets/new")
+play_token = play_token_info['play_token']
 
-song_info = ET.fromstring(urllib2.urlopen(query_url).read())
+for mix_url in mix_urls:
+   # Get the mix information, extract the mix id
+   mix_info = api_call(mix_url)
+   mix_id = mix_info['mix']['id']
+   mix_name = mix_info['mix']['name'].encode('ascii', 'ignore')
 
-# Song playing loop
-last_song = False
-infos = []
-while not last_song:
+   os.system("mkdir -p \"playlists/%s\" 1>/dev/null 2>/dev/null" % mix_name)
 
-   # Load the next song
-   query_url = "http://8tracks.com/sets/%s/next.xml" % play_token
-   query_url += "?mix_id=" + mix_id
-   query_url += "&api_key=" + api_key
-   song_info = ET.fromstring(urllib2.urlopen(query_url).read())
+   # Start the playlist
+   song_info = api_call("sets/1/play", mix_id=mix_id, play_token=play_token)
 
-   # Get relevant information and save it
-   for i in song_info[0]:
-      if i.tag == 'at-end' and i.text == 'true':
-         last_song = True
-         continue
-      if i.tag == 'track':
-         for j in i:
-            if j.tag == 'id':          
-               track_id = j.text
-            elif j.tag == 'name':      
-               name = normalize(j.text)
-            elif j.tag == 'performer': 
-               artist = normalize(j.text)
-            elif j.tag == 'url':       
-               track_url = j.text
+   # Song playing loop
+   while True:
 
-   print "Enqueuing %s - \"%s\"" % (artist, name)
+      # Get relevant information and save it
+      if song_info['set']['at_end']:
+         break
 
-   # Notify 8tracks that the song is being played
-   query_url = "http://8tracks.com/sets/%s/report.xml" % play_token
-   query_url += "?mix_id=" + mix_id
-   query_url += "&track_id=" + track_id
-   query_url += "&api_key=" + api_key
-   # note: do not need to save any information, just need to call the url
-   urllib2.urlopen(query_url) 
+      track_id = song_info['set']['track']['id']
+      name = song_info['set']['track']['name'].encode('ascii', 'ignore')
+      artist = song_info['set']['track']['name'].encode('ascii', 'ignore')
+      track_url = song_info['set']['track']['url']
 
-   # Fix the url if necessary (https://api.soundcloud.com/foobarabc123 ones
-   # don't work)
-   if (track_url[:5] == "https"):
-      track_url = "http" + track_url[5:]
+      print "Playing: %s - \"%s\"" % (artist, name)
 
-   print "track url: %s" % track_url
-   
-   # Queue the song via mpc
-   os.system("mpc add \"%s\" 1>/dev/null" % track_url)
-   os.system("mpc play 1>/dev/null")
+      # Notify 8tracks that the song is being played
+      api_call("sets/1/report", play_token=play_token, mix_id=mix_id, track_id=track_id)
 
-   infos.append((track_url, artist, name))
+      # Queue the song via mpc
+      os.system("mpc add \"%s\" 1>/dev/null" % track_url)
+      os.system("mpc play 1>/dev/null")
+      f = urllib2.urlopen(track_url)
+      with open("playlists/%s/%s - %s.m4a" % (mix_name, artist, name), "w+") as code:
+        code.write(f.read())
 
-# ~~~ Downloadin ~~~
-while True:
-   foo = raw_input("Save songs for later? [yn]\n> ")
-   if (foo == 'y'):
-      os.system("mkdir music 2>/dev/null")
-      os.system("mkdir music/%s 2>/dev/null" % mix_name)
+      # Wait until the song finishes playing to do the loop again
+      # (note: in reality, this just waits for *something* to happen to the
+      #  playlist. this could be neater)
+      os.system("mpc current --wait 1>/dev/null")
 
-      for url, artist, name in infos:
-         
-         f = urllib2.urlopen(url)
-         print "Downloading " + artist + " - \"%s\"" % name
-         with open("music/%s/%s - %s.m4a" \
-                   % (mix_name, artist, name), "w+") as music:
-            music.write(f.read())
-
-      break
-   elif (foo == 'n'): 
-      break
+      # Load the next song
+      song_info = api_call("sets/1/next", play_token=play_token, mix_id=mix_id)
