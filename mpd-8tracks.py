@@ -71,7 +71,7 @@ for mix_url in mix_urls:
    # Get the mix information, extract the mix id
    mix_info = api_call(mix_url)
    mix_id = mix_info['mix']['id']
-   mix_name = mix_info['mix']['name'].encode('ascii', 'ignore')
+   mix_name = normalize(mix_info['mix']['name'])
 
    os.system("mkdir -p \"playlists/%s\" 1>/dev/null 2>/dev/null" % mix_name)
 
@@ -86,8 +86,8 @@ for mix_url in mix_urls:
          break
 
       track_id = song_info['set']['track']['id']
-      name = song_info['set']['track']['name'].encode('ascii', 'ignore')
-      artist = song_info['set']['track']['name'].encode('ascii', 'ignore')
+      name = normalize(song_info['set']['track']['name'])
+      artist = normalize(song_info['set']['track']['name'])
       track_url = song_info['set']['track']['url']
 
       print "Playing: %s - \"%s\"" % (artist, name)
