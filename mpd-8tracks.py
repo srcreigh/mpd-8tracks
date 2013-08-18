@@ -110,7 +110,7 @@ while not last_song:
    # Fix the url if necessary (https://api.soundcloud.com/foobarabc123 ones
    # don't work)
    if (track_url[:5] == "https"):
-      track_url = "http" + track_url[:5]
+      track_url = "http" + track_url[5:]
 
    print "track url: %s" % track_url
    
@@ -119,9 +119,10 @@ while not last_song:
    os.system("mpc play 1>/dev/null")
 
    infos.append((track_url, artist, name))
-   
+
+# ~~~ Downloadin ~~~
 while True:
-   foo = raw_input("Save songs for later? [yn]\n > ")
+   foo = raw_input("Save songs for later? [yn]\n> ")
    if (foo == 'y'):
       os.system("mkdir music 2>/dev/null")
       os.system("mkdir music/%s 2>/dev/null" % mix_name)
