@@ -42,7 +42,7 @@ def api_call(path, **kwargs):
 
 # Check for correct usage (i.e. that a url has been given)
 if (len(sys.argv) != 2):
-   print "ERR: Usage: python mpd8tracks [url to an 8tracks mix]"
+   print >> sys.stderr, "ERR: Usage: python mpd8tracks [url to an 8tracks mix]"
    sys.exit(2)
 else:
    mix_url = sys.argv[1]
@@ -51,7 +51,7 @@ else:
 
 # Check that MPD/MPC is working
 if (os.system('mpc 1>/dev/null 2>/dev/null') != 0):
-   print "ERR: MPD isn't running; please start mpd and run again"
+   print >> sys.stderr, "ERR: MPD isn't running; please start mpd and run again"
    sys.exit(1)
 
 # Set up mpd
