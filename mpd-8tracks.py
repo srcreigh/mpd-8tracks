@@ -30,6 +30,16 @@ import json
 # Open the API developer key
 api_key = open("8tracksdevkey.txt", 'r').readline()[:-1]
 
+# we're using api version 2
+api_version = "2"
+
+def api_call(path, **kwargs):
+   query = "https://8tracks.com/%s.jsonp?api_version=%s&api_key=%s" % (path, api_version, api_key)
+   for key in kwargs:
+      query = "%s&%s=%s" % (query, key, kwargs[key])
+   return json.loads(urllib2.urlopen(query).read())
+
+
 # Check for correct usage (i.e. that a url has been given)
 if (len(sys.argv) != 2):
    print "ERR: Usage: python mpd8tracks [url to an 8tracks mix]"
@@ -37,8 +47,7 @@ if (len(sys.argv) != 2):
 else:
    mix_url = sys.argv[1]
 
-# we're using api version 2
-api_version = "2"
+
 
 # Check that MPD/MPC is working
 if (os.system('mpc 1>/dev/null 2>/dev/null') != 0):
@@ -50,25 +59,18 @@ os.system("mpc clear 1>/dev/null")
 os.system("mpc consume on 1>/dev/null")
 
 # Get the mix information, extract the mix id
-query_url = "%s.jsonp?api_version=%s&api_key=%s" % (mix_url, api_version, api_key)
-mix_info = json.loads(urllib2.urlopen(query_url).read())
-
+mix_info = api_call(mix_url[19:])
 mix_id = mix_info['mix']['id']
 mix_name = mix_info['mix']['name'].encode('ascii', 'ignore')
 
 os.system("mkdir \"playlists/%s\" 1>/dev/null 2>/dev/null" % mix_name)
 
 # Get the play token
-query_url = "http://8tracks.com/sets/new.jsonp?api_version=%s&api_key=%s" % (api_version, api_key)
-play_token_info = json.loads(urllib2.urlopen(query_url).read())
+play_token_info = api_call("sets/new")
 play_token = play_token_info['play_token']
 
 # Start the playlist
-query_url = "http://8tracks.com/sets/460486803/play.jsonp?api_version=%smix_id=%s" % (api_version, mix_id)
-query_url += "&api_key=" + api_key
-query_url += "&play_token=" + play_token
-
-song_info = json.loads(urllib2.urlopen(query_url).read())
+song_info = api_call("sets/1/play", mix_id=mix_id, play_token=play_token)
 
 # Song playing loop
 while True:
@@ -85,12 +87,7 @@ while True:
    print "Playing: %s - \"%s\"" % (artist, name)
 
    # Notify 8tracks that the song is being played
-   query_url = "http://8tracks.com/sets/%s/report.xml" % play_token
-   query_url += "?mix_id=%s" % mix_id
-   query_url += "&track_id=%s" % track_id
-   query_url += "&api_key=" + api_key
-   # note: do not need to save any information, just need to call the url
-   urllib2.urlopen(query_url) 
+   api_call("sets/1/report", play_token=play_token, mix_id=mix_id, track_id=track_id)
 
    # Queue the song via mpc
    os.system("mpc add \"%s\" 1>/dev/null" % track_url)
@@ -105,7 +102,5 @@ while True:
    os.system("mpc current --wait 1>/dev/null")
 
    # Load the next song
-   query_url = "http://8tracks.com/sets/%s/next.jsonp" % play_token
-   query_url += "?mix_id=%s" % mix_id
-   query_url += "&api_key=" + api_key
-   song_info = json.loads(urllib2.urlopen(query_url).read())
+   song_info = api_call("sets/1/next", play_token=play_token, mix_id=mix_id)
+
