@@ -1,4 +1,4 @@
-####################################
+###################################
 # Project: mpd8tracks
 # Author: Shane Creighton-Young
 #
@@ -28,6 +28,10 @@ import json
 def normalize(s):
    t = s.encode('ascii', 'ignore')
    return t.translate(None, "'/")
+
+def fix_track_url(url):
+   if (url[:5] == 'https'):
+      return 'http%s' % url[5:]
 
 # Check that MPD/MPC is working
 if (os.system('mpc 1>/dev/null 2>/dev/null') != 0):
@@ -87,6 +91,10 @@ for mix_url in mix_urls:
       name = normalize(song_info['set']['track']['name'])
       artist = normalize(song_info['set']['track']['name'])
       track_url = song_info['set']['track']['url']
+
+      # Fix the track URL (https://api.soundcloud/foo links don't work and need
+      # to be converted to http://api.soundcloud/foo)
+      track_url = fix_track_url(track_url)
 
       print "Playing: %s - \"%s\"" % (artist, name)
 
