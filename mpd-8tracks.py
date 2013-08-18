@@ -1,7 +1,6 @@
-#####################################
+####################################
 # Project: mpd8tracks
 # Author: Shane Creighton-Young
-# Copyright: Freely distributable
 #
 # Usage: 
 # python mpd8tracks [url to an 8tracks mix]...
@@ -18,9 +17,8 @@
 # - another song will be added if the playlist is changed at all
 # - doesn't queue another playlist automatically; only exits
 #
-# Known issues:
-#
-#
+# Contributors:
+# - omsmith
 
 import sys
 import urllib2
