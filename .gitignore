@@ -1,5 +1,6 @@
 8tracksdevkey.txt
 apikey
+config.json
 mpd-8tracks
 playlists
-*.swp
+**/*.swp

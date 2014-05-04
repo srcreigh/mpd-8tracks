@@ -18,7 +18,8 @@
 # - doesn't queue another playlist automatically; only exits
 #
 # Contributors:
-# - omsmith
+# omsmith
+# xLegoz
 
 import sys
 import urllib2
@@ -34,6 +35,14 @@ def fix_track_url(url):
    if (url[:5] == 'https'):
       return 'http' + url[5:]
    return url
+
+# Open config file
+config = None
+try:
+    with open('config.json') as config_text:
+        config = json.load(config_text)
+except IOError:
+    print >> sys.stderr, "WARN: No config.json file"
 
 # Check that MPD/MPC is working
 if (os.system('mpc 1>/dev/null 2>/dev/null') != 0):
@@ -51,8 +60,17 @@ for url in sys.argv[1:]:
       mix_urls.append(url[i+11:])
 
 # Open the API developer key
-api_key = raw_input("Enter API Key: ")
-print
+# TODO: Should check that this API key is valid
+api_key = None
+if (config == None or config['apikey'] == None):
+   try:
+      api_key = raw_input("Enter API Key: ")
+   except KeyboardInterrupt:
+      print
+      sys.exit(1)
+else:
+   print "Using API Key from config.json..."
+   api_key = config['apikey']
 
 # we're using api version 3
 api_version = "3"
@@ -76,14 +94,14 @@ for mix_url in mix_urls:
    mix_info = api_call(mix_url)
    mix_id = mix_info['mix']['id']
    mix_name = normalize(mix_info['mix']['name'])
+   download = config.get('download', False)
 
-   os.system("mkdir -p \"playlists/%s\" 1>/dev/null 2>/dev/null" % mix_name)
+   # Create the playlist directory if we're downloading the music
+   if (download):
+       os.system("mkdir -p \"playlists/%s\" 1>/dev/null 2>/dev/null" % mix_name)
 
    # Let the user know which mix is playing
-   print "Now playing %s" % mix_name
-
-   # Will store information to download stuff after 
-   infos = []
+   print "Now playing: \"%s\"" % mix_name
 
    # Song playing loop
    while True:
@@ -106,10 +124,15 @@ for mix_url in mix_urls:
       # to be converted to http://api.soundcloud/foo)
       track_url = fix_track_url(track_url)
 
-      # Save in the list for possible downloading
-      infos.append((track_url, artist, name))
-
       print "Enqueuing: %s - \"%s\"" % (artist, name)
+
+      if (download):
+         # Download the song
+         print "Downloading: %s - \"%s\"" % (artist, name)
+         f = urllib2.urlopen(track_url)
+         with open("playlists/%s/%s - %s.mp3" % (mix_name, artist, name),
+                  "w+") as song:
+            song.write(f.read())
 
       # Notify 8tracks that the song is being played
       api_call("sets/%s/report" % play_token, mix_id=mix_id, track_id=track_id)
@@ -121,25 +144,4 @@ for mix_url in mix_urls:
       # If we're at the end of the mix finish up
       if song_info['set']['at_end']:
          print "Finished playing %s" % mix_name
-         break
-
-
-   # Asks if want to download songs
-   while True:
-      try:
-         ans = raw_input("Download this playlist? [yn]\n> ")
-      except EOFError:
-         continue
-
-      if (ans[0] == 'y'):
-         for track_url, artist, name in infos:
-            # Download the song
-            print "Downloading: %s - \"%s\"" % (artist, name)
-            f = urllib2.urlopen(track_url)
-            with open("playlists/%s/%s - %s" % (mix_name, artist, name),
-                      "w+") as song:
-               song.write(f.read())
-         break
-
-      elif (ans[0] == 'n'):
          break
