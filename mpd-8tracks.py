@@ -24,6 +24,7 @@ import sys
 import urllib2
 import os
 import json
+import time
 
 def normalize(s):
    t = s.encode('ascii', 'ignore')
@@ -53,8 +54,8 @@ for url in sys.argv[1:]:
 api_key = raw_input("Enter API Key: ")
 print
 
-# we're using api version 2
-api_version = "2"
+# we're using api version 3
+api_version = "3"
 
 def api_call(path, **kwargs):
    query = "https://8tracks.com/%s.jsonp?api_version=%s&api_key=%s" % (path, api_version, api_key)
@@ -78,23 +79,28 @@ for mix_url in mix_urls:
 
    os.system("mkdir -p \"playlists/%s\" 1>/dev/null 2>/dev/null" % mix_name)
 
-   # Start the playlist
-   song_info = api_call("sets/1/play", mix_id=mix_id, play_token=play_token)
-   
-   # WIll store information to download stuff after 
+   # Let the user know which mix is playing
+   print "Now playing %s" % mix_name
+
+   # Will store information to download stuff after 
    infos = []
 
    # Song playing loop
    while True:
 
-      # Get relevant information and save it
-      if song_info['set']['at_end']:
-         break
+      # Get the song info crom 8tracks api
+      song_info = api_call("sets/%s/next" % play_token, mix_id=mix_id)
 
+      # If we can't request the next one due to time restrictions, sleep and try again
+      if (song_info['status'] == "403 Forbidden"):
+        time.sleep(30)
+        continue
+      
+      # Get relevant information and save it
       track_id = song_info['set']['track']['id']
       artist = normalize(song_info['set']['track']['performer'])
       name = normalize(song_info['set']['track']['name'])
-      track_url = song_info['set']['track']['url']
+      track_url = song_info['set']['track']['track_file_stream_url']
 
       # Fix the track URL (https://api.soundcloud/foo links don't work and need
       # to be converted to http://api.soundcloud/foo)
@@ -106,14 +112,17 @@ for mix_url in mix_urls:
       print "Enqueuing: %s - \"%s\"" % (artist, name)
 
       # Notify 8tracks that the song is being played
-      api_call("sets/1/report", play_token=play_token, mix_id=mix_id, track_id=track_id)
+      api_call("sets/%s/report" % play_token, mix_id=mix_id, track_id=track_id)
 
       # Queue the song via mpc
       os.system("mpc add \"%s\" 1>/dev/null" % track_url)
       os.system("mpc play 1>/dev/null")
 
-      # Load the next song
-      song_info = api_call("sets/1/next", play_token=play_token, mix_id=mix_id)
+      # If we're at the end of the mix finish up
+      if song_info['set']['at_end']:
+         print "Finished playing %s" % mix_name
+         break
+
 
    # Asks if want to download songs
    while True:
