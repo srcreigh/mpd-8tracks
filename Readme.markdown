@@ -13,7 +13,7 @@ as follows:
 
 ```json
 {
-  "config": "abcdef123456890abcdef1234"
+  "apikey": "abcdef123456890abcdef1234"
 }
 ```
 
